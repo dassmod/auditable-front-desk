@@ -1,0 +1,13 @@
+CLINIC_NAME = "Alder Street F"
+
+OPEN_DAYS = (0, 1, 2, 3, 4)
+OPEN_TIME = "09:00"
+CLOSE_TIME = "18:00"
+
+SLOT_MINUTES = 30
+
+BOOKED = [
+    "2026-10-06T14:00",
+    "2026-10-06T16:00",
+    "2026-10-07T09:30",
+]

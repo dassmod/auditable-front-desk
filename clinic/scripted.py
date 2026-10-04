@@ -16,6 +16,8 @@ while True:
 
     rec.record("nondeterministic", "user_message", {}, {"text": user_message})
     start = parse_booking(user_message, NOW)
+    rec.record("deterministic", "parse_booking", {"text": user_message, "now": NOW}, {"start": start})
+
     if start is None:
         agent_reply = "did not understand"
         rec.record("nondeterministic", "agent_reply", {}, {"text": agent_reply})

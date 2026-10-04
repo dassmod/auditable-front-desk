@@ -23,6 +23,11 @@ def parse_booking(text, now):
     if target == None:
         return None
 
+    try:
+        clock = datetime.strptime(time_text, "%H:%M")
+    except ValueError:
+        return None
+
     now = datetime.fromisoformat(now)
     today = now.weekday()
 
@@ -31,4 +36,4 @@ def parse_booking(text, now):
         ahead = 7
 
     date = now.date() + timedelta(days=ahead)
-    return date.isoformat() + "T" + time_text
+    return date.isoformat() + "T" + clock.strftime("%H:%M")

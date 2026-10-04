@@ -1,3 +1,5 @@
+"""Turns a booking message into a slot."""
+
 from datetime import datetime, timedelta
 
 DAYS = {
@@ -9,6 +11,13 @@ DAYS = {
 }
 
 def parse_booking(text, now):
+    """
+    Turn "book tuesday 15:00" into an ISO start like "2026-10-06T15:00".
+    Returns None if the text cannot be read.
+
+    `now` is an ISO string passed in, so the same text and `now` always give
+    the same answer. A weekday means its next occurrence, never today.
+    """
     words = text.lower().split()
 
     if len(words) != 3:

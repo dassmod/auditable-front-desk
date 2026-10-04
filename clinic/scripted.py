@@ -1,3 +1,8 @@
+"""
+A scripted booking loop: read a line, parse it, run the guards, book or
+refuse, and record every step. Type quit to save the trace.
+"""
+
 from datetime import datetime
 from clinic.trace import Recorder
 from clinic.guards import slot_is_free, within_opening_hours, not_in_past

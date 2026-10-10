@@ -108,3 +108,7 @@ The clinic is fictional. The calendar is fake. No real personal or health inform
 ## Why a clinic
 
 A booking line is deliberately ordinary. A crypto-themed demo would prove something nobody doubts. A front desk tests the question decentralized networks have not answered yet: whether a normal business can run on what they produce, and check what it was given.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

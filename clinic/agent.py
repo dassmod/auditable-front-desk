@@ -1,7 +1,8 @@
 """
 The agent: a model proposes a booking, the guards decide, the effect acts,
 and every step is recorded. A reply with no tool call, and a tool call whose
-arguments are not valid JSON, each end the run with the trace saved.
+arguments cannot be read (not valid JSON, not an object, or no `start`), each
+end the run with the trace saved.
 
 Run from the repo root with the .env exported:
     set -a; source .env; set +a
@@ -15,6 +16,7 @@ from openai import OpenAI
 
 from clinic.guards import slot_is_free, within_opening_hours, not_in_past
 from clinic.trace import Recorder
+from clinic.parser import parse_arguments
 from clinic.world import BOOKED, CLINIC_NAME, SLOT_MINUTES, OPEN_TIME, CLOSE_TIME
 
 model_name = os.environ.get("MODEL_NAME")
@@ -22,7 +24,7 @@ model_api_key = os.environ.get("MODEL_API_KEY")
 model_base_url = os.environ.get("MODEL_BASE_URL")
 
 NOW = "2026-10-01T09:12"
-RUN_ID = "conv-0004"
+RUN_ID = "conv-0009"
 TRACE_PATH = f"traces/{RUN_ID}.json"
 
 rec = Recorder(RUN_ID)
@@ -97,20 +99,22 @@ rec.record(
     }
 )
 
-# Arguments that are not valid JSON are a broken output, not a normal one.
-# Record why the run stops, save the trace, and stop.
-try:
-    start = json.loads(tool_call.function.arguments)["start"]
-except json.JSONDecodeError:
-    rec.record(
-        "deterministic",
-        "json",
-        {"arguments": tool_call.function.arguments},
-        {"decision": "json.load error"}
-    )
+# Read the arguments with a pure function and record its status. Anything but
+# "ok" is a broken output: save the trace and stop.
+status = parse_arguments(tool_call.function.arguments)
+rec.record(
+    "deterministic",
+    "parse_arguments",
+    {"arguments": tool_call.function.arguments},
+    {"status": status}
+)
+
+if status != "ok":
     rec.save(TRACE_PATH)
-    print("json.load error")
+    print(status)
     raise SystemExit
+
+start = json.loads(tool_call.function.arguments)["start"]
 
 # 3. The guards decide. Each is a pure function of its recorded inputs.
 is_free = slot_is_free(start, BOOKED)

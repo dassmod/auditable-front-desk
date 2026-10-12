@@ -1,6 +1,7 @@
 """Turns a booking message into a slot."""
 
 from datetime import datetime, timedelta
+import json
 
 DAYS = {
     "monday": 0,
@@ -46,3 +47,15 @@ def parse_booking(text, now):
 
     date = now.date() + timedelta(days=ahead)
     return date.isoformat() + "T" + clock.strftime("%H:%M")
+
+def parse_arguments(arguments):
+    """Return "ok" if `arguments` is a JSON object with a `start` key, else "invalid_json", "not_an_object" or "missing_start"."""
+    try:
+        json.loads(arguments)["start"]
+    except json.JSONDecodeError:
+        return "invalid_json"
+    except KeyError:
+        return "missing_start"
+    except TypeError:
+        return "not_an_object"
+    return "ok"

@@ -7,10 +7,11 @@ trace never chooses what gets run.
 """
 
 from clinic.guards import slot_is_free, within_opening_hours, not_in_past
-from clinic.parser import parse_booking
+from clinic.parser import parse_booking, parse_arguments
 
 TABLE = {
     "parse_booking": {"fn": parse_booking, "key": "start"},
+    "parse_arguments": {"fn": parse_arguments, "key": "status"},
     "slot_is_free": {"fn": slot_is_free, "key": "decision"},
     "within_opening_hours": {"fn": within_opening_hours, "key": "decision"},
     "not_in_past": {"fn": not_in_past, "key": "decision"},

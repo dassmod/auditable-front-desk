@@ -1,4 +1,4 @@
-CLINIC_NAME = "Alder Street F"
+CLINIC_NAME = "Alder Street Family Clinic"
 
 OPEN_DAYS = (0, 1, 2, 3, 4)
 OPEN_TIME = "09:00"

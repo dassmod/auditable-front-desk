@@ -1,12 +1,13 @@
 """
-A scripted booking loop: read a line, parse it, run the guards, book or
-refuse, and record every step. Type quit to save the trace.
+The loop with no model: read a typed line like `book tuesday 15:00`, parse
+it, run the three guards, book or refuse, and record every step. A line that
+cannot be parsed is recorded and refused before the guards. Type quit to
+save the trace to traces/conv-0001.json, overwriting any earlier one.
 """
 
-from datetime import datetime
 from clinic.trace import Recorder
 from clinic.guards import slot_is_free, within_opening_hours, not_in_past
-from clinic.world import OPEN_DAYS, OPEN_TIME, CLOSE_TIME, SLOT_MINUTES, BOOKED
+from clinic.world import BOOKED
 from clinic.parser import parse_booking
 
 NOW = "2026-10-01T09:12"

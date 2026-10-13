@@ -18,7 +18,10 @@ def slot_is_free(start, booked):
         return "deny"
 
 def within_opening_hours(start):
-    """allow if a slot starting at `start` is on an open day and ends the same day within opening hours."""
+    """
+    allow if a slot starting at `start` is on an open day and ends the same
+    day within opening hours.
+    """
     start_time = datetime.fromisoformat(start)
     end_time = start_time + timedelta(minutes=SLOT_MINUTES)
 
@@ -33,7 +36,10 @@ def within_opening_hours(start):
         return "deny"
 
 def not_in_past(start, now):
-    """allow if `start` is later than `now`. `now` is an argument, never read from a clock."""
+    """
+    allow if `start` is later than `now`. `now` is an argument, never read
+    from a clock.
+    """
     if datetime.fromisoformat(start) > datetime.fromisoformat(now):
         return "allow"
     else:

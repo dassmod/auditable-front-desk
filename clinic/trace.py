@@ -8,7 +8,7 @@ class Recorder:
     def __init__(self, run_id):
         self.run_id = run_id
         self.steps = []
-    
+
     def record(self, kind, name, inputs, outputs):
         """
         Append one step. `kind` is "deterministic" if it can be re-run from
@@ -24,7 +24,7 @@ class Recorder:
             "inputs": json.loads(json.dumps(inputs)),
             "outputs": json.loads(json.dumps(outputs))
         })
-    
+
     def save(self, path):
         """Write the run to `path` as JSON."""
         trace = {

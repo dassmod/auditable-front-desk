@@ -1,4 +1,8 @@
-"""Turns a booking message into a slot."""
+"""
+Pure functions that read input. `parse_booking` turns a typed message into a
+slot (used by the scripted loop). `parse_arguments` checks the model's
+tool-call arguments (used by the agent).
+"""
 
 from datetime import datetime, timedelta
 import json
@@ -49,7 +53,13 @@ def parse_booking(text, now):
     return date.isoformat() + "T" + clock.strftime("%H:%M")
 
 def parse_arguments(arguments):
-    """Return "ok" if `arguments` is a JSON object with a `start` key, else "invalid_json", "not_an_object" or "missing_start"."""
+    """
+    Return "ok" if `arguments` is a JSON object with a `start` key. Otherwise
+    return the layer that failed: "invalid_json" (not JSON), "not_an_object"
+    (JSON, but not an object) or "missing_start" (an object with no `start`).
+
+    It does not check the type or the format of `start`.
+    """
     try:
         json.loads(arguments)["start"]
     except json.JSONDecodeError:

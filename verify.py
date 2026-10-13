@@ -1,6 +1,11 @@
 """
 Replay a saved trace through the proof-of-agent-run engine and print one
-line per verdict.
+line per step: its index, its name and the engine's verdict (match,
+divergence, skipped, or a could-not-check reason such as unknown_guard).
+
+The engine is the sibling repo proof-of-agent-run, installed in this repo's
+virtual environment with `pip install -e ../proof-of-agent-run`. TABLE, in
+clinic/table.py, is the whitelist of what the engine may re-run.
 
 Usage: python verify.py [traces/conv-0001.json]
 """

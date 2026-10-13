@@ -1,3 +1,8 @@
+"""
+Asserts for the two parsers. Run from the repo root: python test_parser.py
+It prints ok when every assert holds.
+"""
+
 from clinic.parser import parse_booking, parse_arguments
 
 NOW = "2026-10-01T09:12"

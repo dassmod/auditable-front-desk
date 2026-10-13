@@ -1,8 +1,10 @@
 """
-The agent: a model proposes a booking, the guards decide, the effect acts,
-and every step is recorded. A reply with no tool call, and a tool call whose
-arguments cannot be read (not valid JSON, not an object, or no `start`), each
-end the run with the trace saved.
+The agent: the patient and the model talk until the model proposes a
+booking, the guards decide, the effect acts, and every step is recorded. A
+reply with no tool call is a question back to the patient: it is recorded,
+the patient answers, and the model is called again. Typing quit ends the run
+with the trace saved, and so does a tool call whose arguments cannot be read
+(not valid JSON, not an object, or no `start`).
 
 Run from the repo root with the .env exported:
     set -a; source .env; set +a
@@ -24,7 +26,7 @@ model_api_key = os.environ.get("MODEL_API_KEY")
 model_base_url = os.environ.get("MODEL_BASE_URL")
 
 NOW = "2026-10-01T09:12"
-RUN_ID = "conv-0009"
+RUN_ID = "conv-0013"
 TRACE_PATH = f"traces/{RUN_ID}.json"
 
 rec = Recorder(RUN_ID)
@@ -45,7 +47,7 @@ The booking system decides whether a slot is allowed. Never tell the patient an 
     },
     {
         "role": "user",
-        "content": "Book me Monday 12 Oct at 10:00"
+        "content": input("> ")
     }
 ]
 
@@ -70,21 +72,31 @@ tools = [{
 # 1. The patient speaks.
 rec.record("nondeterministic", "user_message", {}, {"text": messages[1]["content"]})
 
-# 2. The model proposes: a plain reply, or a tool call.
-first = client.chat.completions.create(
-    model=model_name,
-    messages=messages,
-    tools=tools
-)
-message = first.choices[0].message
+# 2. The model proposes: a plain reply, or a tool call. A plain reply is a
+# question back to the patient. Record it, add it and the patient's answer to
+# `messages`, and call the model again. The list has to end on a user turn.
+while True:
+    response = client.chat.completions.create(
+        model=model_name,
+        messages=messages,
+        tools=tools
+    )
+    message = response.choices[0].message
 
-# No tool call is a normal outcome: the model answered in text. Record the
-# reply and stop.
-if message.tool_calls is None:
+    if message.tool_calls is not None:
+        break
+
     rec.record("nondeterministic", "agent_reply", {}, {"text": message.content})
-    rec.save(TRACE_PATH)
     print(message.content)
-    raise SystemExit
+    messages.append(message)
+
+    text = input("> ")
+    if text == "quit":
+        rec.save(TRACE_PATH)
+        raise SystemExit
+
+    rec.record("nondeterministic", "user_message", {}, {"text": text})
+    messages.append({"role": "user", "content": text})
 
 tool_call = message.tool_calls[0]
 
@@ -161,12 +173,12 @@ messages.append({
     "content": result
 })
 
-second = client.chat.completions.create(
+response = client.chat.completions.create(
     model=model_name,
     messages=messages,
     tools=tools
 )
-reply = second.choices[0].message.content
+reply = response.choices[0].message.content
 rec.record("nondeterministic", "agent_reply", {}, {"text": reply})
 
 rec.save(TRACE_PATH)

@@ -12,7 +12,7 @@ It does not prove a run was correct, honest, or safe. It proves something narrow
 
 The inputs themselves are a claim. The trace is written by the agent, the same party whose correctness is in question. If the trace says the calendar held three bookings when it held five, replay confirms the guard answered correctly on the calendar it was shown, and says nothing about the real one. What the model chose to say cannot be replayed at all, and the report says so instead of guessing.
 
-Replay also checks each step on its own. It does not yet check that the steps agree with each other: a trace that records a guard saying `deny` and then a booking anyway would replay with every step reported as `match`.
+Replay also checks each step on its own. It does not check that the steps agree with each other, and it only sees the steps that are in the file. Three forged traces in `examples/` show what that allows. Flipping one recorded decision from `deny` to `allow` is caught: `divergence` on that step and `match` everywhere else (`forged-deny-to-allow.json`). Deleting the three guard steps in front of a booking is not caught: the booking is `skipped` like any write, and nothing reports the missing guards (`forged-missing-guards.json`). Removing the taken slot from the recorded calendar and recording `allow` is not caught either: the guard answers correctly on the calendar it was shown, so the step is `match` (`forged-booked-list.json`). The same happens with no forger at all, when the agent hands a step an out-of-date calendar and records it honestly.
 
 There is no overall verdict. Each step gets its own answer: it matched, it diverged, or it could not be checked, and why.
 
@@ -67,7 +67,7 @@ python -m clinic.agent
 python verify.py traces/conv-0004.json
 ```
 
-The model is reached through any OpenAI-compatible chat API: `.env` holds `MODEL_BASE_URL`, `MODEL_API_KEY` and `MODEL_NAME`, and changing provider is a change to those three values, not to the code. Each run handles one request (the user message near the top of `clinic/agent.py`) and saves one trace.
+The model is reached through any OpenAI-compatible chat API: `.env` holds `MODEL_BASE_URL`, `MODEL_API_KEY` and `MODEL_NAME`, and changing provider is a change to those three values, not to the code. Each run is one conversation: type at the `>` prompt, and `quit` ends it and saves `traces/<RUN_ID>.json`. Change `RUN_ID` near the top of `clinic/agent.py` before each run.
 
 Two ways to run it with no model at all:
 
@@ -85,10 +85,12 @@ clinic/world.py      the clinic: opening days and hours, slot length, starting b
 clinic/guards.py     the three guards, pure functions
 clinic/parser.py     turns "book tuesday 15:00" into a start time, for the scripted loop
 clinic/table.py      the steps a replay may re-run, and where each one's answer is
+clinic/tools.py      the read tool, find_free_slots, a pure function of the day and the calendar
 clinic/trace.py      the recorder
 clinic/scripted.py   the booking loop with no model
 clinic/agent.py      the booking loop with a model
 verify.py            replays a trace through proof-of-agent-run
+examples/            three forged traces, and what replay says about each
 WORKLOG.md           one dated entry per session: where it stopped, what is next, what is open
 ```
 
@@ -96,8 +98,8 @@ WORKLOG.md           one dated entry per session: where it stopped, what is next
 
 The agent's brain is the same whether it types or talks, so what comes next puts more around it without changing it:
 
-- **A conversation,** not a single request, including asking the patient to confirm a date the model worked out by itself.
-- **Forged traces, built on purpose,** to show exactly where replay stops: a guard step left out, an edited calendar, a `deny` followed by a booking.
+- **Confirming a date** the model worked out by itself, before it books.
+- **A replay that checks steps against each other,** so a missing guard step or a stale calendar shows up in the report.
 - **A voice in the browser,** with speech-to-text and text-to-speech served by [Chutes](https://chutes.ai), Bittensor subnet 64.
 - **A phone number** to call it on.
 - **Other voices and languages** from other Bittensor subnets, including a caller who switches language mid-call.

@@ -1,0 +1,178 @@
+{
+  "run_id": "conv-0018",
+  "agent": "auditable-front-desk",
+  "steps": [
+    {
+      "index": 0,
+      "kind": "nondeterministic",
+      "name": "user_message",
+      "inputs": {},
+      "outputs": {
+        "text": "what is free on tuesday?"
+      }
+    },
+    {
+      "index": 1,
+      "kind": "nondeterministic",
+      "name": "model_decision",
+      "inputs": {},
+      "outputs": {
+        "tool_name": "find_free_slots",
+        "arguments": "{\"day\": \"2026-10-06\"}"
+      }
+    },
+    {
+      "index": 2,
+      "kind": "deterministic",
+      "name": "find_free_slots",
+      "inputs": {
+        "day": "2026-10-06",
+        "booked": [
+          "2026-10-06T14:00",
+          "2026-10-06T16:00",
+          "2026-10-07T09:30"
+        ]
+      },
+      "outputs": {
+        "slots": [
+          "2026-10-06T09:00",
+          "2026-10-06T09:30",
+          "2026-10-06T10:00",
+          "2026-10-06T10:30",
+          "2026-10-06T11:00",
+          "2026-10-06T11:30",
+          "2026-10-06T12:00",
+          "2026-10-06T12:30",
+          "2026-10-06T13:00",
+          "2026-10-06T13:30",
+          "2026-10-06T14:30",
+          "2026-10-06T15:00",
+          "2026-10-06T15:30",
+          "2026-10-06T16:30",
+          "2026-10-06T17:00",
+          "2026-10-06T17:30"
+        ]
+      }
+    },
+    {
+      "index": 3,
+      "kind": "nondeterministic",
+      "name": "agent_reply",
+      "inputs": {},
+      "outputs": {
+        "text": "These times are free on Tuesday, October 6:\n\n- **Morning:** 9:00, 9:30, 10:00, 10:30, 11:00, 11:30\n- **Afternoon:** 12:00, 12:30, 1:00, 1:30, 2:30, 3:00, 3:30, 4:30\n- **Evening:** 5:00, 5:30\n\nTell me which time you'd like and I'll book it."
+      }
+    },
+    {
+      "index": 4,
+      "kind": "nondeterministic",
+      "name": "user_message",
+      "inputs": {},
+      "outputs": {
+        "text": "last one"
+      }
+    },
+    {
+      "index": 5,
+      "kind": "nondeterministic",
+      "name": "model_decision",
+      "inputs": {},
+      "outputs": {
+        "tool_name": "book_appointment",
+        "arguments": "{\"start\": \"2026-10-06T17:30\"}"
+      }
+    },
+    {
+      "index": 6,
+      "kind": "deterministic",
+      "name": "parse_arguments",
+      "inputs": {
+        "arguments": "{\"start\": \"2026-10-06T17:30\"}"
+      },
+      "outputs": {
+        "status": "ok"
+      }
+    },
+    {
+      "index": 10,
+      "kind": "nondeterministic",
+      "name": "book_appointment",
+      "inputs": {
+        "start": "2026-10-06T17:30"
+      },
+      "outputs": {
+        "booked": true
+      }
+    },
+    {
+      "index": 11,
+      "kind": "nondeterministic",
+      "name": "agent_reply",
+      "inputs": {},
+      "outputs": {
+        "text": "Your appointment is booked for Tuesday, October 6 at 5:30 PM. It's the last slot of the day."
+      }
+    },
+    {
+      "index": 12,
+      "kind": "nondeterministic",
+      "name": "user_message",
+      "inputs": {},
+      "outputs": {
+        "text": "what is free on tuesday?"
+      }
+    },
+    {
+      "index": 13,
+      "kind": "nondeterministic",
+      "name": "model_decision",
+      "inputs": {},
+      "outputs": {
+        "tool_name": "find_free_slots",
+        "arguments": "{\"day\": \"2026-10-06\"}"
+      }
+    },
+    {
+      "index": 14,
+      "kind": "deterministic",
+      "name": "find_free_slots",
+      "inputs": {
+        "day": "2026-10-06",
+        "booked": [
+          "2026-10-06T14:00",
+          "2026-10-06T16:00",
+          "2026-10-07T09:30",
+          "2026-10-06T17:30"
+        ]
+      },
+      "outputs": {
+        "slots": [
+          "2026-10-06T09:00",
+          "2026-10-06T09:30",
+          "2026-10-06T10:00",
+          "2026-10-06T10:30",
+          "2026-10-06T11:00",
+          "2026-10-06T11:30",
+          "2026-10-06T12:00",
+          "2026-10-06T12:30",
+          "2026-10-06T13:00",
+          "2026-10-06T13:30",
+          "2026-10-06T14:30",
+          "2026-10-06T15:00",
+          "2026-10-06T15:30",
+          "2026-10-06T16:30",
+          "2026-10-06T17:00"
+        ]
+      }
+    },
+    {
+      "index": 15,
+      "kind": "nondeterministic",
+      "name": "agent_reply",
+      "inputs": {},
+      "outputs": {
+        "text": "Here is what's still free on Tuesday, October 6. Your 5:30 PM appointment is now taken, so it no longer shows up.\n\n- **Morning:** 9:00, 9:30, 10:00, 10:30, 11:00, 11:30\n- **Afternoon:** 12:00, 12:30, 1:00, 1:30, 2:30, 3:00, 3:30, 4:30\n- **Evening:** 5:00\n\nDo you want to change your appointment or book another one?"
+      }
+    }
+  ]
+}

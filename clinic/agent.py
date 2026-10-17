@@ -45,7 +45,7 @@ model_base_url = os.environ.get("MODEL_BASE_URL")
 # recorded in the trace as an input.
 NOW = "2026-10-01T09:12"
 # One trace file per run, named after the run. Change it before each run.
-RUN_ID = "conv-0017"
+RUN_ID = "conv-0018"
 TRACE_PATH = f"traces/{RUN_ID}.json"
 
 rec = Recorder(RUN_ID)

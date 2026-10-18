@@ -83,9 +83,11 @@ python test_parser.py        # prints ok
 ```
 clinic/world.py      the clinic: opening days and hours, slot length, starting bookings
 clinic/guards.py     the three guards, pure functions
-clinic/parser.py     turns "book tuesday 15:00" into a start time, for the scripted loop
+clinic/parser.py     reads typed input into a start time, and checks the model's tool-call arguments
 clinic/table.py      the steps a replay may re-run, and where each one's answer is
-clinic/tools.py      the read tool, find_free_slots, a pure function of the day and the calendar
+clinic/tools.py      the tool list the model sees, and the read tool, find_free_slots, a pure function of the day and the calendar
+clinic/session.py    one conversation as one object: its messages, its own calendar, its recorder
+clinic/turn.py       one patient turn on a Session: the model, the tools, the guards and the effect
 clinic/trace.py      the recorder
 clinic/scripted.py   the booking loop with no model
 clinic/agent.py      the booking loop with a model

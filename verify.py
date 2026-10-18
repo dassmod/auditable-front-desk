@@ -30,4 +30,7 @@ for verdict in replay_trace(trace, TABLE):
             f"  recorded={verdict['recorded']}"
             f" rederived={verdict['rederived']}"
         )
-    print(f"  {verdict['index']:>2}  {verdict['name']:<22} {verdict['status']}{detail}")
+    print(
+        f"  {verdict['index']:>2}  {verdict['name']:<22} "
+        f"{verdict['status']}{detail}"
+    )

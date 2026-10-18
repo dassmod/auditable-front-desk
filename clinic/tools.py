@@ -1,13 +1,68 @@
 """
-The tools the model may use. `find_free_slots` is a read: it returns the free
-slots of one day and changes nothing. It is a pure function of its arguments,
-so a replay engine can re-run it from a recorded trace.
+The tools the model may use. `TOOLS` is the list the model sees.
+`find_free_slots` is a read: it returns the free slots of one day and changes
+nothing. It is a pure function of its arguments, so a replay engine can re-run
+it from a recorded trace. `book_appointment` is not a function here: the model
+only proposes it, and the guards and the effect run in clinic/turn.py and
+clinic/agent.py.
 """
 
 from datetime import datetime, timedelta
 
 from clinic.guards import slot_is_free, within_opening_hours
 from clinic.world import SLOT_MINUTES, OPEN_TIME
+
+# The tool list in the OpenAI function-calling shape. The model reads every
+# `description`, so changing a word changes what it does. `book_appointment`
+# takes `start`. `find_free_slots` takes `day`.
+TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "book_appointment",
+            "description": (
+                "use this tool when patient wants to book an appointment"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "start": {
+                        "type": "string",
+                        "description": (
+                            "start of the slot in the format is "
+                            "2026-10-13T15:00"
+                        )
+                    }
+                },
+                "required": ["start"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "find_free_slots",
+            "description": (
+                "Use this tool to list the free appointment times "
+                "on one day. Call it when the patient asks "
+                "what is available or has not chosen a time."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "day": {
+                        "type": "string",
+                        "description": (
+                            "The day to look at, in the format "
+                            "2026-10-13."
+                        )
+                    }
+                },
+                "required": ["day"]
+            }
+        }
+    }
+]
 
 def find_free_slots(day, booked):
     """

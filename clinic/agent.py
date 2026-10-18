@@ -22,6 +22,11 @@ Run from the repo root with the .env exported:
     python -m clinic.agent
 Change RUN_ID before each run: the trace is written to traces/<RUN_ID>.json
 and an existing file of that name is overwritten.
+
+clinic/turn.py runs the same loop on a Session, with no keyboard. This file
+still holds its own copies of the system prompt (`fresh_messages` in
+clinic/session.py), the tool list (`TOOLS` in clinic/tools.py) and `NOW` (in
+clinic/session.py).
 """
 
 import json
@@ -32,7 +37,9 @@ from openai import OpenAI
 from clinic.guards import slot_is_free, within_opening_hours, not_in_past
 from clinic.trace import Recorder
 from clinic.parser import parse_arguments
-from clinic.world import BOOKED, CLINIC_NAME, SLOT_MINUTES, OPEN_TIME, CLOSE_TIME
+from clinic.world import (
+    BOOKED, CLINIC_NAME, SLOT_MINUTES, OPEN_TIME, CLOSE_TIME
+)
 from clinic.tools import find_free_slots
 
 # The model is reached through an OpenAI-shaped API. Three environment values
@@ -80,13 +87,18 @@ tools = [
         "type": "function",
         "function": {
             "name": "book_appointment",
-            "description": "use this tool when patient wants to book an appointment",
+            "description": (
+                "use this tool when patient wants to book an appointment"
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "start": {
                         "type": "string",
-                        "description": "start of the slot in the format is 2026-10-13T15:00"
+                        "description": (
+                            "start of the slot in the format is "
+                            "2026-10-13T15:00"
+                        )
                     }
                 },
                 "required": ["start"]
@@ -97,13 +109,20 @@ tools = [
         "type": "function",
         "function": {
             "name": "find_free_slots",
-            "description": "Use this tool to list the free appointment times on one day. Call it when the patient asks what is available or has not chosen a time.",
+            "description": (
+                "Use this tool to list the free appointment times "
+                "on one day. Call it when the patient asks "
+                "what is available or has not chosen a time."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "day": {
                         "type": "string",
-                        "description": "The day to look at, in the format 2026-10-13."
+                        "description": (
+                            "The day to look at, in the format "
+                            "2026-10-13."
+                        )
                     }
                 },
                 "required": ["day"]
@@ -114,7 +133,12 @@ tools = [
 
 # 1. The patient speaks. This records only the first message. Every later
 # one is recorded where it is read.
-rec.record("nondeterministic", "user_message", {}, {"text": messages[1]["content"]})
+rec.record(
+    "nondeterministic",
+    "user_message",
+    {},
+    {"text": messages[1]["content"]}
+)
 
 # One pass of this loop is one booking proposal: ask, guard, act, reply, then
 # read the patient's next message.
@@ -132,7 +156,10 @@ while True:
         )
         message = response.choices[0].message
 
-        if message.tool_calls is not None and message.tool_calls[0].function.name == "book_appointment":
+        if (
+            message.tool_calls is not None
+            and message.tool_calls[0].function.name == "book_appointment"
+        ):
             break
         elif message.tool_calls is not None:
             # A read tool. Record the proposal, run the function, record its
@@ -168,7 +195,12 @@ while True:
             continue
 
         # A plain reply: a question for the patient.
-        rec.record("nondeterministic", "agent_reply", {}, {"text": message.content})
+        rec.record(
+            "nondeterministic",
+            "agent_reply",
+            {},
+            {"text": message.content}
+        )
         print(message.content)
         messages.append(message)
 
@@ -238,7 +270,12 @@ while True:
     # 4. The effect acts, only when every guard allows.
     if is_free == "allow" and is_open == "allow" and is_in_future == "allow":
         BOOKED.append(start)
-        rec.record("nondeterministic", "book_appointment", {"start": start}, {"booked": True})
+        rec.record(
+            "nondeterministic",
+            "book_appointment",
+            {"start": start},
+            {"booked": True}
+        )
         result = "booked"
     elif is_free != "allow":
         result = "refused: not free"

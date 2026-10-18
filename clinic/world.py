@@ -15,8 +15,9 @@ CLOSE_TIME = "18:00"
 
 SLOT_MINUTES = 30
 
-# The starting calendar: slot start times as ISO strings. The whole process
-# shares this one list and the booking effect appends to it, so it changes
+# The starting calendar: slot start times as ISO strings. A Session takes its
+# own copy (`fresh_calendar` in session.py). `agent.py` and `scripted.py` use
+# this one list directly and their booking effect appends to it, so it changes
 # while a run goes on. It is not saved between runs.
 BOOKED = [
     "2026-10-06T14:00",

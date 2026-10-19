@@ -92,6 +92,7 @@ clinic/trace.py      the recorder
 clinic/scripted.py   the booking loop with no model
 clinic/agent.py      the booking loop with a model
 verify.py            replays a trace through proof-of-agent-run
+api.py               the HTTP service: start a conversation, send a message, read the trace, verify it
 examples/            three forged traces, and what replay says about each
 WORKLOG.md           one dated entry per session: where it stopped, what is next, what is open
 ```

@@ -25,13 +25,15 @@ class Recorder:
             "outputs": json.loads(json.dumps(outputs))
         })
 
-    def save(self, path):
-        """Write the run to `path` as JSON."""
-        trace = {
+    def to_dict(self):
+        """Return the run as plain data, the shape `save` writes."""
+        return {
             "run_id": self.run_id,
             "agent": "auditable-front-desk",
             "steps": self.steps
         }
 
+    def save(self, path):
+        """Write the run to `path` as JSON."""
         with open(path, "w") as f:
-            json.dump(trace, f, indent=2)
+            json.dump(self.to_dict(), f, indent=2)

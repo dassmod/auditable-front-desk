@@ -1,55 +1,84 @@
 """One conversation as one object: the state that belongs to it."""
 
 from dataclasses import dataclass, field
+from datetime import datetime
+from textwrap import dedent
+
+from clinic.trace import Recorder
 from clinic.world import (
     BOOKED, CLINIC_NAME, SLOT_MINUTES, OPEN_TIME, CLOSE_TIME
 )
-from clinic.trace import Recorder
 
-# The clock is fixed. It is told to the model in the system prompt, passed to
-# `not_in_past` and recorded in the trace as an input. `agent.py` keeps its own
-# copy of this value.
-NOW = "2026-10-01T09:12"
 
 def fresh_calendar():
     """Return a copy of the world's calendar, so each Session owns its own."""
     return list(BOOKED)
 
-def fresh_messages():
-    """Return a new message list that holds only the system prompt.
 
-    Each Session calls this once, so no two Sessions share a list. The prompt
-    is the same text as the one in `agent.py`.
-    """
+def fresh_messages(timestamp):
+    """Build a session's initial model context using its captured timestamp."""
     return [
         {
             "role": "system",
-            "content": f"""You are the front desk assistant for {CLINIC_NAME}, a clinic that books appointments.
-The clinic is open Monday to Friday, from {OPEN_TIME} to {CLOSE_TIME}. Each appointment lasts {SLOT_MINUTES} minutes.
-Today's date and time is {NOW}. Work out words like "tomorrow" or "next Tuesday" from this date.
-When the patient has given a specific day and time, call book_appointment with start in the format YYYY-MM-DDTHH:MM, for example 2026-10-13T15:00.
-If the day or time is unclear, ask the patient before calling the tool.
-The booking system decides whether a slot is allowed. Never tell the patient an appointment is booked until the tool result says booked, and if it refuses, tell them the reason you were given."""
+            "content": dedent(f"""\
+                You are the front desk assistant for {CLINIC_NAME}, a clinic that books appointments.
+                The clinic is open Monday to Friday, from {OPEN_TIME} to {CLOSE_TIME}. Each appointment lasts {SLOT_MINUTES} minutes.
+                Today's date and time is {timestamp}. Work out words like "tomorrow" or "next Tuesday" from this date.
+
+                When the patient gives a specific day and time, call book_appointment with start in the format YYYY-MM-DDTHH:MM, for example 2026-10-13T15:00. This proposes a slot; it does not book it. After the application records the proposal, tell the patient the exact date and time and ask whether they want to confirm it.
+
+                When the patient clearly accepts the pending proposal in their own words, call confirm_appointment. Natural confirmations include "yes", "that works", "sure", or "go ahead". Do not call this tool for a rejection, an unclear reply, or a request to change the date or time.
+
+                When the patient clearly rejects the pending proposal, call decline_proposal. Natural rejections include "no", "that won't work", or "I don't want that time". Do not call this tool for an unclear reply or a request to change the date or time.
+
+                When the patient asks for a different date or time, call book_appointment to propose the new slot. If their reply is unclear, ask a follow-up question and leave the pending proposal unchanged.
+
+                Never say an appointment is booked unless confirm_appointment returns "booked". If the application refuses a proposal, confirmation, or decline, explain the reason it returned.
+            """)
         }
     ]
 
+
+def pending_after_proposal(pending_start, proposed_start):
+    """Return the pending slot after the model proposes a new one."""
+    return proposed_start
+
+
+def pending_proposal_matches(pending_start, pending_at_turn_start):
+    """Return whether the same proposal was pending at turn start."""
+    if pending_start is not None and pending_start == pending_at_turn_start:
+        return "allow"
+    return "deny"
+
+
+def pending_after_resolution(pending_start, pending_at_turn_start):
+    """Clear a proposal resolved this turn; otherwise preserve the state."""
+    if pending_proposal_matches(pending_start, pending_at_turn_start) == "allow":
+        return None
+    return pending_start
+
+
 @dataclass
 class Session:
-    """Everything that belongs to one conversation.
+    """The state that belongs to one API conversation.
 
-    `messages` and `booked` are made new for every Session by a default
-    factory, so two Sessions never share a list. `recorder` is built from
-    `run_id` in `__post_init__`, after the other fields are set. `client`
-    has no default and comes right after `run_id`, because a field with no
-    default must come before a field with one.
+    `now` is captured at creation and used to build the initial model prompt.
+    `pending_start` holds a proposed slot until the patient confirms or declines
+    it. `booked` is a fresh calendar copy. `messages` and `recorder` are built
+    in `__post_init__`; `run_id` and `client` are the required fields.
     """
 
     run_id: str
     client: object  # the model client; a test passes a fake one
-    messages: list = field(default_factory=fresh_messages)
+    now: str = field(
+        default_factory=lambda: datetime.now().isoformat(timespec="minutes")
+    )
+    pending_start: str | None = None
+    messages: list = field(init=False)
     booked: list = field(default_factory=fresh_calendar)
     recorder: Recorder = field(init=False)
 
     def __post_init__(self):
-        """Create this session's recorder after its fields are initialized."""
+        """Create this session's recorder and initial model context."""
         self.recorder = Recorder(self.run_id)
+        self.messages = fresh_messages(self.now)

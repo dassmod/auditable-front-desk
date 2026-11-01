@@ -23,10 +23,9 @@ Run from the repo root with the .env exported:
 Change RUN_ID before each run: the trace is written to traces/<RUN_ID>.json
 and an existing file of that name is overwritten.
 
-clinic/turn.py runs the same loop on a Session, with no keyboard. This file
-still holds its own copies of the system prompt (`fresh_messages` in
-clinic/session.py), the tool list (`TOOLS` in clinic/tools.py) and `NOW` (in
-clinic/session.py).
+clinic/turn.py runs the API loop on a Session, with no keyboard. This
+terminal agent is a separate implementation: its prompt, tool list and fixed
+`NOW` value are defined in this file.
 """
 
 import json

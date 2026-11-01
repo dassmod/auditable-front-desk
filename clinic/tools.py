@@ -1,10 +1,10 @@
-"""
-The tools the model may use. `TOOLS` is the list the model sees.
-`find_free_slots` is a read: it returns the free slots of one day and changes
-nothing. It is a pure function of its arguments, so a replay engine can re-run
-it from a recorded trace. `book_appointment` is not a function here: the model
-only proposes it, and the guards and the effect run in clinic/turn.py and
-clinic/agent.py.
+"""Define model-facing tools and the deterministic free-slot lookup.
+
+`find_free_slots` is a read and can be replayed from its recorded inputs.
+`book_appointment` proposes a slot; `confirm_appointment` and
+`decline_proposal` express the model's interpretation of the patient's reply.
+The API handles these proposals and signals in `clinic/turn.py`. The separate
+terminal agent in `clinic/agent.py` still has its own booking flow.
 """
 
 from datetime import datetime, timedelta
@@ -12,16 +12,15 @@ from datetime import datetime, timedelta
 from clinic.guards import slot_is_free, within_opening_hours
 from clinic.world import SLOT_MINUTES, OPEN_TIME
 
-# The tool list in the OpenAI function-calling shape. The model reads every
-# `description`, so changing a word changes what it does. `book_appointment`
-# takes `start`. `find_free_slots` takes `day`.
+# OpenAI-compatible function tool schemas. `book_appointment` takes `start`,
+# `find_free_slots` takes `day`, and confirmation/decline tools take no args.
 TOOLS = [
     {
         "type": "function",
         "function": {
             "name": "book_appointment",
             "description": (
-                "use this tool when patient wants to book an appointment"
+                "Propose an appointment slot the patient has requested; this does not book it."
             ),
             "parameters": {
                 "type": "object",
@@ -61,8 +60,48 @@ TOOLS = [
                 "required": ["day"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "confirm_appointment",
+            "description": (
+                "Confirm the currently pending appointment proposal. "
+                "Call this only when the patient clearly accepts that specific "
+                "appointment, including natural replies such as 'yes', 'that works', "
+                "'sure', or 'go ahead'. Do not call it for a rejection, an unclear "
+                "reply, or a request to change the date or time. This tool takes no "
+                "arguments; the application uses the pending appointment time."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "decline_proposal",
+            "description": (
+                "Record that the patient has declined the currently proposed "
+                "appointment. Call this when the patient clearly rejects that "
+                "specific proposal, including natural replies such as 'no', "
+                "'that won't work', or 'I don't want that time'. Do not call it "
+                "for an unclear reply or a request to change the date or time; "
+                "for a requested change, use book_appointment to propose the "
+                "new slot. This tool takes no arguments."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        }
     }
 ]
+
 
 def find_free_slots(day, booked):
     """

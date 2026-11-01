@@ -78,7 +78,7 @@ python -m pip install -r requirements.txt
 cp -n .env.example .env
 ```
 
-Fill in the three model settings in `.env`, then export them and start the combined API and UI server:
+Fill in `MODEL_BASE_URL`, `MODEL_API_KEY` and `MODEL_NAME` in `.env`, then export them and start the combined API and UI server. `CHUTES_API_KEY` is only needed for the planned voice STT/TTS integration; the current voice prototype does not use it:
 
 ```sh
 set -a
@@ -90,6 +90,19 @@ uvicorn api:app --reload
 Visit <http://127.0.0.1:8000/ui> for the chat or <http://127.0.0.1:8000/docs> for the API docs. Stop the local server with **Ctrl+C**.
 
 The standalone Gradio development entry point is also available with `python ui.py`, but it expects the API to already be running at `http://127.0.0.1:8000`. The normal local command above mounts the page into FastAPI, as the Docker container does.
+
+## Browser voice prototype
+
+The voice prototype is a separate Pipecat process using SmallWebRTC. At its current stage it connects browser audio, detects speech boundaries with Silero VAD, and creates a clinic API session when a browser client connects. Speech recognition, forwarding spoken turns to the clinic API, and spoken replies are not implemented yet.
+
+Start the clinic API in one terminal, using the local Python instructions above. In a second terminal, activate the same virtual environment and start Pipecat:
+
+```sh
+source .venv/bin/activate
+python voice_bot.py
+```
+
+Open <http://127.0.0.1:7860/client/> and click **Connect**. The runner uses the API at `http://127.0.0.1:8000` to create the clinic-side session. The Pipecat browser session ID and clinic `session_id` are separate values. `CHUTES_API_KEY` is reserved in `.env.example` for the planned AudioDojo Whisper and Kokoro integration; the current transport/VAD prototype does not use it yet. The Docker image starts only the clinic API, not this separate voice runner.
 
 ## HTTP API
 
@@ -145,6 +158,7 @@ python verify.py examples/forged-deny-to-allow.json
 ```text
 api.py                 FastAPI routes; mounts the Gradio page at /ui
 ui.py                  Gradio chat and Verify button
+voice_bot.py           Pipecat SmallWebRTC browser voice prototype
 clinic/session.py      per-session clock, conversation, pending slot and calendar
 clinic/turn.py         model turns, proposal flow, confirmation, guards and booking
 clinic/verification.py replay steps and validate booking relationships across steps
@@ -156,7 +170,7 @@ clinic/trace.py        trace recorder and JSON serialization
 clinic/world.py        clinic settings, fixed demo data and starting calendar
 verify.py              command-line trace replay for local trace files
 examples/              forged sample traces illustrating replay's limits
-requirements.txt       pinned Python dependencies, including replay engine
+requirements.txt       pinned Python dependencies, including replay and voice
 Dockerfile             image recipe for the combined API and UI
 .dockerignore          files omitted from the container build context
 WORKLOG.md             dated learning-session notes and next steps
@@ -164,7 +178,7 @@ WORKLOG.md             dated learning-session notes and next steps
 
 ## Project direction
 
-The API asks the patient to confirm the model's resolved appointment proposal before booking. The accept path has been run and verified: the booking was added after confirmation, with deterministic pending-state and guard verdicts matching. The decline path has also been run and verified: no booking was added, and the pending proposal was cleared. The clinic verifier now checks pending-state continuity and the required sequence for recognized appointment confirmations. Later directions include voice interaction, a phone entry point, additional voices and languages, and publishing a verdict through a validation registry.
+The API asks the patient to confirm the model's resolved appointment proposal before booking. The accept path has been run and verified: the booking was added after confirmation, with deterministic pending-state and guard verdicts matching. The decline path has also been run and verified: no booking was added, and the pending proposal was cleared. The clinic verifier now checks pending-state continuity and the required sequence for recognized appointment confirmations. Browser voice work has started as a separate Pipecat runner; the current prototype handles WebRTC transport, VAD, and clinic-session creation, but not speech recognition or replies yet. Later directions include completing voice, a phone entry point, additional voices and languages, and publishing a verdict through a validation registry.
 
 A front desk is deliberately ordinary: it tests whether a business task can be handled by a model and then checked against the inputs and decisions recorded by the application.
 

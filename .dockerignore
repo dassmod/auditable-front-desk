@@ -1,0 +1,18 @@
+# Local credentials and Python environment
+.env
+.venv/
+
+# Git and generated files
+.git/
+__pycache__/
+*.py[cod]
+.DS_Store
+
+# Local traces and development-only entry points
+traces/
+scratch.py
+scratch_old.py
+test_parser.py
+verify.py
+clinic/agent.py
+clinic/scripted.py

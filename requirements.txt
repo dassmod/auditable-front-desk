@@ -2,6 +2,7 @@ fastapi==0.162.0
 gradio==6.30.0
 httpx==0.28.1
 openai==3.39.0
+pipecat-ai[runner,webrtc]==1.15.0
 pydantic==2.14.1
 uvicorn==0.54.0
 proof-of-agent-run @ git+https://github.com/dassmod/proof-of-agent-run.git@9b2176a52d4677ca1cd4b10f7436c94277f360c7

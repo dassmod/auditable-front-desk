@@ -6,6 +6,7 @@ class Recorder:
     """Collects the steps of one run, in order."""
 
     def __init__(self, run_id):
+        """Start an empty recorder for `run_id`."""
         self.run_id = run_id
         self.steps = []
 

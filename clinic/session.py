@@ -51,4 +51,5 @@ class Session:
     recorder: Recorder = field(init=False)
 
     def __post_init__(self):
+        """Create this session's recorder after its fields are initialized."""
         self.recorder = Recorder(self.run_id)

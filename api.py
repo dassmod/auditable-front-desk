@@ -1,16 +1,14 @@
-"""The agent as an HTTP service: one Session per conversation, kept in memory.
+"""Serve the clinic API and Gradio page from one FastAPI application.
 
-Run from the repo folder, with `.env` exported first (`clinic/turn.py` reads
-`MODEL_NAME` once, at import):
+Run locally from the repo folder with `.env` exported first (`clinic/turn.py`
+reads `MODEL_NAME` once, at import):
 
     set -a; source .env; set +a
     uvicorn api:app --reload
 
-Routes:
-    POST /sessions                        start a conversation, return its id
-    POST /sessions/{session_id}/messages  one patient turn, return the reply
-    GET  /sessions/{session_id}/trace     the trace recorded so far
-    POST /sessions/{session_id}/verify    replay the trace, return verdicts
+Open the Gradio page at http://127.0.0.1:8000/ui and the API docs at /docs.
+The API routes start sessions, accept messages, return traces and replay them.
+Gradio is mounted at `/ui`, so the same Uvicorn server serves both.
 
 Sessions live in this process's memory, so a restart forgets them.
 """
@@ -18,14 +16,17 @@ Sessions live in this process's memory, so a restart forgets them.
 import os
 import uuid
 
+import gradio as gr
 from fastapi import FastAPI, HTTPException
 from openai import OpenAI
 from pydantic import BaseModel
+from replay.engine import replay_trace
 
 from clinic.session import Session
 from clinic.table import TABLE
 from clinic.turn import run_turn
-from replay.engine import replay_trace
+from ui import demo
+
 
 class MessageIn(BaseModel):
     """The body of one patient message."""
@@ -82,3 +83,5 @@ def verify(session_id: str):
     """Replay the trace with the clinic's TABLE: one verdict per step."""
     session = get_session(session_id)
     return replay_trace(session.recorder.to_dict(), TABLE)
+
+app = gr.mount_gradio_app(app, demo, path="/ui")

@@ -2,117 +2,167 @@
 
 A receptionist agent for a fictional clinic, built so that every booking it makes leaves a record a stranger can re-check.
 
-The model reads the patient's request and asks for a booking. Plain code decides whether the booking is allowed. Every step is written to a trace as it happens, and [`proof-of-agent-run`](https://github.com/dassmod/proof-of-agent-run) replays the trace afterwards and reports, step by step, what it could confirm.
+The project has a FastAPI service and a Gradio chat page. The model interprets a patient's words and proposes tool calls. Python code checks a proposed booking against the calendar, opening hours and demo clock; only then can the booking be added to that session's calendar. The recorder captures the steps, and `proof-of-agent-run` replays the deterministic ones.
 
-## What it does not claim
+This is a learning demo. The clinic and calendar are fictional; do not enter real patient or health information.
 
-Read this first, because replay sounds stronger than it is.
+## What replay means
 
-It does not prove a run was correct, honest, or safe. It proves something narrower: **every decision step recorded in the trace is the answer the clinic's own code gives on the inputs the trace records.**
+Replay makes a narrow claim: for each deterministic step in the trace, the clinic's registered function returns the recorded answer when given the recorded inputs.
 
-The inputs themselves are a claim. The trace is written by the agent, the same party whose correctness is in question. If the trace says the calendar held three bookings when it held five, replay confirms the guard answered correctly on the calendar it was shown, and says nothing about the real one. What the model chose to say cannot be replayed at all, and the report says so instead of guessing.
+Replay does **not** prove that the trace is complete or truthful, that the recorded inputs reflect a real calendar, or that the model's interpretation and wording are correct. The agent writes the trace itself. Replay checks steps one at a time; it does not currently enforce that every booking has all required guard steps or that one step's inputs agree with earlier steps.
 
-Replay also checks each step on its own. It does not check that the steps agree with each other, and it only sees the steps that are in the file. Three forged traces in `examples/` show what that allows. Flipping one recorded decision from `deny` to `allow` is caught: `divergence` on that step and `match` everywhere else (`forged-deny-to-allow.json`). Deleting the three guard steps in front of a booking is not caught: the booking is `skipped` like any write, and nothing reports the missing guards (`forged-missing-guards.json`). Removing the taken slot from the recorded calendar and recording `allow` is not caught either: the guard answers correctly on the calendar it was shown, so the step is `match` (`forged-booked-list.json`). The same happens with no forger at all, when the agent hands a step an out-of-date calendar and records it honestly.
+The report is per step, not one overall verdict:
 
-There is no overall verdict. Each step gets its own answer: it matched, it diverged, or it could not be checked, and why.
+- `match`: the registered function returned the recorded answer.
+- `divergence`: the function returned a different answer.
+- `skipped`: the step is not replayed, such as a patient message, model reply or booking effect.
+- Other could-not-check statuses explain why a step could not be replayed, for example when its name is not in the replay table.
 
-## How it works
+The model's words and choices are nondeterministic, so replay skips them rather than pretending to verify them. The replay table in `clinic/table.py` is the whitelist of functions that may be run again.
 
-**The model proposes, the guards decide, the effect acts.**
+The files in `examples/` make the boundary concrete:
 
-1. The patient asks in plain language: "Book me in for Sunday at 10am".
-2. The model answers with a tool call, `book_appointment`, carrying a start time such as `2026-10-04T10:00`. It never books anything itself.
-3. Three guards run on that start time. Each is a pure function that returns `allow` or `deny`:
-   - `slot_is_free(start, booked)`: nobody holds that slot already.
-   - `within_opening_hours(start)`: the slot is on an open day and ends by closing time.
-   - `not_in_past(start, now)`: the slot starts after `now`.
-4. Only if all three allow is the booking written. Otherwise the model is told which guard refused, and it tells the patient.
-5. The recorder appends each step to the trace the moment it happens, copied through JSON, so a later change to the agent's data cannot rewrite what was recorded.
-6. `verify.py` hands the trace and the clinic's table of replayable steps to `proof-of-agent-run`, which re-runs each one and compares.
+- `forged-deny-to-allow.json` changes a recorded guard answer; replay reports a divergence for that step.
+- `forged-missing-guards.json` removes the guard steps before a booking; replay does not currently report that those steps are missing.
+- `forged-booked-list.json` removes a taken slot from the guard's recorded calendar; the guard matches the incomplete calendar it was given.
 
-A guard never reads the clock, the calendar or the network. Anything it needs about the world arrives as an argument and goes into the trace. That is what makes it replayable tomorrow, when the world is different. The table of what may be re-run lives in this repo (`clinic/table.py`), so a trace never chooses what gets executed.
+## How a booking works
 
-## One run, replayed
+1. The patient sends a message in the Gradio page or to the API.
+2. The model can ask a follow-up question, look up free slots with `find_free_slots`, or propose a start time with `book_appointment`.
+3. A booking proposal is parsed, then checked by `slot_is_free`, `within_opening_hours` and `not_in_past`.
+4. The booking is added to that session's calendar only if all three guards allow it.
+5. The recorder captures the interaction and deterministic decisions. The Verify button asks the API to replay that session's trace.
 
-Asked for a Sunday, the model proposed `2026-10-04T10:00`. `within_opening_hours` refused it, no booking was written, and the model told the patient the office is closed that day. Replaying that trace:
+## Run with Docker
 
-```
-$ python verify.py traces/conv-0003.json
-conv-0003
-   0  user_message           skipped
-   1  model_decision         skipped
-   2  slot_is_free           match  recorded=allow rederived=allow
-   3  within_opening_hours   match  recorded=deny rederived=deny
-   4  not_in_past            match  recorded=allow rederived=allow
-   5  agent_reply            skipped
+Docker runs FastAPI and the Gradio page in one container on port `8000`. Docker Desktop (or another running Docker engine) must be installed first.
+
+From the repository folder, create a local `.env` file and fill in the three values for your OpenAI-compatible model provider:
+
+```sh
+cp -n .env.example .env
 ```
 
-`skipped` means the step cannot be re-run: what the patient wrote, what the model chose, what it replied. Edit the recorded `deny` to `allow` and the same command reports `divergence` on step 3 and `match` everywhere else.
+The `-n` option leaves an existing `.env` untouched. The required variables are `MODEL_BASE_URL`, `MODEL_API_KEY` and `MODEL_NAME`. Keep `.env` private; it is excluded from the image build by `.dockerignore`.
 
-## Run it
+Build the image:
 
-`proof-of-agent-run` sits next to this repo, and this one imports it.
-
+```sh
+docker build -t auditable-front-desk .
 ```
-git clone https://github.com/dassmod/proof-of-agent-run
-git clone https://github.com/dassmod/auditable-front-desk
-cd auditable-front-desk
-python3 -m venv .venv && source .venv/bin/activate
-pip install -e ../proof-of-agent-run
-pip install openai
+
+Start the container:
+
+```sh
+docker run --rm --env-file .env -p 8000:8000 auditable-front-desk
+```
+
+Open the chat at <http://localhost:8000/ui>. Send a message, then press **Verify** to see the replay verdicts. FastAPI's interactive API documentation is at <http://localhost:8000/docs>.
+
+The container stays attached to the terminal. Press **Ctrl+C** there to stop it. The `--rm` option removes the stopped container; the built image remains on your machine.
+
+If your model provider is running on your Mac rather than at a reachable network address, `localhost` in `MODEL_BASE_URL` points inside the container. With Docker Desktop, use `host.docker.internal` to reach a service running on the Mac host.
+
+## Run locally with Python
+
+From the repository folder:
+
+```sh
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+cp -n .env.example .env
+```
+
+Fill in the three model settings in `.env`, then export them and start the combined API and UI server:
+
+```sh
+set -a
+source .env
+set +a
+uvicorn api:app --reload
+```
+
+Visit <http://127.0.0.1:8000/ui> for the chat or <http://127.0.0.1:8000/docs> for the API docs. Stop the local server with **Ctrl+C**.
+
+The standalone Gradio development entry point is also available with `python ui.py`, but it expects the API to already be running at `http://127.0.0.1:8000`. The normal local command above mounts the page into FastAPI, as the Docker container does.
+
+## HTTP API
+
+All routes are served by the same process as the UI:
+
+| Method | Route | Purpose |
+| --- | --- | --- |
+| `POST` | `/sessions` | Create an in-memory conversation and return its `session_id`. |
+| `POST` | `/sessions/{session_id}/messages` | Send `{"text": "..."}` and receive the reply and current booked slots. |
+| `GET` | `/sessions/{session_id}/trace` | Return the recorded trace for that conversation. |
+| `POST` | `/sessions/{session_id}/verify` | Replay that trace and return one verdict per step. |
+
+The interactive request forms and response schemas are available at `/docs` while the service is running.
+
+## State and limits
+
+- Sessions and their calendars live in server memory. Restarting the server or container loses them.
+- API-created traces are returned by the trace route; they are not automatically saved as files.
+- The demo clock is fixed at `2026-10-01T09:12` in `clinic/session.py`. Relative dates and the `not_in_past` check use that value, not the computer's current time.
+- The API has no authentication and is intended for local demonstration, not public deployment.
+- The starting calendar is sample data in `clinic/world.py`; it is not a real booking system.
+
+## Command-line learning versions
+
+The repository also keeps two earlier ways to explore the booking logic from a terminal. They are development entry points and are excluded from the Docker image by `.dockerignore`.
+
+```sh
 mkdir -p traces
-cp .env.example .env    # fill in the three values
-set -a; source .env; set +a
+python -m clinic.scripted
+```
+
+At the prompt, try `book tuesday 15:00`, then type `quit` to save the trace. `clinic.scripted` reads simple typed requests without a model. To run the model-backed terminal loop instead, activate the virtual environment, export `.env` as above, then run:
+
+```sh
 python -m clinic.agent
-python verify.py traces/conv-0004.json
 ```
 
-The model is reached through any OpenAI-compatible chat API: `.env` holds `MODEL_BASE_URL`, `MODEL_API_KEY` and `MODEL_NAME`, and changing provider is a change to those three values, not to the code. Each run is one conversation: type at the `>` prompt, and `quit` ends it and saves `traces/<RUN_ID>.json`. Change `RUN_ID` near the top of `clinic/agent.py` before each run.
+These loops save traces under `traces/`. The model-backed terminal agent uses the `RUN_ID` constant in `clinic/agent.py` for its filename; change it before another run if you want to keep an existing trace. Replay a saved trace locally with:
 
-Two ways to run it with no model at all:
-
-```
-python -m clinic.scripted    # type "book tuesday 15:00", then "quit"
-python test_parser.py        # prints ok
+```sh
+python verify.py traces/conv-0001.json
 ```
 
-`clinic/scripted.py` is the same loop with a small parser in place of the model, so every step in its trace is one you can reason about completely.
+For a trace that is available in a fresh checkout, use one of the examples:
 
-## What is in it
-
-```
-clinic/world.py      the clinic: opening days and hours, slot length, starting bookings
-clinic/guards.py     the three guards, pure functions
-clinic/parser.py     reads typed input into a start time, and checks the model's tool-call arguments
-clinic/table.py      the steps a replay may re-run, and where each one's answer is
-clinic/tools.py      the tool list the model sees, and the read tool, find_free_slots, a pure function of the day and the calendar
-clinic/session.py    one conversation as one object: its messages, its own calendar, its recorder
-clinic/turn.py       one patient turn on a Session: the model, the tools, the guards and the effect
-clinic/trace.py      the recorder
-clinic/scripted.py   the booking loop with no model
-clinic/agent.py      the booking loop with a model
-verify.py            replays a trace through proof-of-agent-run
-api.py               the HTTP service: start a conversation, send a message, read the trace, verify it
-examples/            three forged traces, and what replay says about each
-WORKLOG.md           one dated entry per session: where it stopped, what is next, what is open
+```sh
+python verify.py examples/forged-deny-to-allow.json
 ```
 
-## Where it goes
+## Repository map
 
-The agent's brain is the same whether it types or talks, so what comes next puts more around it without changing it:
+```text
+api.py                 FastAPI routes; mounts the Gradio page at /ui
+ui.py                  Gradio chat and Verify button
+clinic/session.py      per-conversation messages, calendar and recorder
+clinic/turn.py         model calls, tool handling, guards and booking effect
+clinic/tools.py        model tool definitions and free-slot lookup
+clinic/guards.py       pure booking rules
+clinic/parser.py       parser for booking arguments and terminal input
+clinic/table.py        replay whitelist and output keys
+clinic/trace.py        trace recorder and JSON serialization
+clinic/world.py        clinic settings, fixed demo data and starting calendar
+verify.py              command-line trace replay for local trace files
+examples/              forged sample traces illustrating replay's limits
+requirements.txt       pinned Python dependencies, including replay engine
+Dockerfile             image recipe for the combined API and UI
+.dockerignore          files omitted from the container build context
+WORKLOG.md             dated learning-session notes and next steps
+```
 
-- **Confirming a date** the model worked out by itself, before it books.
-- **A replay that checks steps against each other,** so a missing guard step or a stale calendar shows up in the report.
-- **A voice in the browser,** with speech-to-text and text-to-speech served by [Chutes](https://chutes.ai), Bittensor subnet 64.
-- **A phone number** to call it on.
-- **Other voices and languages** from other Bittensor subnets, including a caller who switches language mid-call.
-- **The verdict on chain,** published through the ERC-8004 validation registry on a testnet.
+## Project direction
 
-The clinic is fictional. The calendar is fake. No real personal or health information ever enters it.
+The next planned steps are to make the model confirm a resolved date before booking, and to strengthen replay so it can detect missing or inconsistent steps across a trace. Later directions include voice interaction, a phone entry point, additional voices and languages, and publishing a verdict through a validation registry.
 
-## Why a clinic
-
-A booking line is deliberately ordinary. A crypto-themed demo would prove something nobody doubts. A front desk tests the question decentralized networks have not answered yet: whether a normal business can run on what they produce, and check what it was given.
+A front desk is deliberately ordinary: it tests whether a business task can be handled by a model and then checked against the inputs and decisions recorded by the application.
 
 ## License
 

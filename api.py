@@ -20,10 +20,9 @@ import gradio as gr
 from fastapi import FastAPI, HTTPException
 from openai import OpenAI
 from pydantic import BaseModel
-from replay.engine import replay_trace
 
 from clinic.session import Session
-from clinic.table import TABLE
+from clinic.verification import verify_trace
 from clinic.turn import run_turn
 from ui import demo
 
@@ -80,8 +79,8 @@ def get_trace(session_id: str):
 
 @app.post("/sessions/{session_id}/verify")
 def verify(session_id: str):
-    """Replay the trace with the clinic's TABLE: one verdict per step."""
+    """Replay steps and check clinic-specific relationships across them."""
     session = get_session(session_id)
-    return replay_trace(session.recorder.to_dict(), TABLE)
+    return verify_trace(session.recorder.to_dict())
 
 app = gr.mount_gradio_app(app, demo, path="/ui")

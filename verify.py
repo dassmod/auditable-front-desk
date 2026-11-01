@@ -1,7 +1,6 @@
 """
-Replay a saved trace through the proof-of-agent-run engine and print one
-line per step: its index, its name and the engine's verdict (match,
-divergence, skipped, or a could-not-check reason such as unknown_guard).
+Replay each deterministic step and print clinic-specific checks across
+pending-state and confirmed-booking events.
 
 The engine is the sibling repo proof-of-agent-run, installed in this repo's
 virtual environment with `pip install -e ../proof-of-agent-run`. TABLE, in
@@ -13,8 +12,7 @@ Usage: python verify.py [traces/conv-0001.json]
 import json
 import sys
 
-from replay.engine import replay_trace
-from clinic.table import TABLE
+from clinic.verification import verify_trace
 
 path = sys.argv[1] if len(sys.argv) > 1 else "traces/conv-0001.json"
 
@@ -23,13 +21,15 @@ with open(path) as f:
 
 print(trace["run_id"])
 
-for verdict in replay_trace(trace, TABLE):
+for verdict in verify_trace(trace):
     detail = ""
     if "recorded" in verdict:
         detail = (
             f"  recorded={verdict['recorded']}"
             f" rederived={verdict['rederived']}"
         )
+    if verdict.get("issues"):
+        detail += "  " + "; ".join(verdict["issues"])
     print(
         f"  {verdict['index']:>2}  {verdict['name']:<22} "
         f"{verdict['status']}{detail}"
